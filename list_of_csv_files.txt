@@ -1,0 +1,10 @@
+./out/benign/air.A3-1000000.apk.csv
+./out/benign/air.AccelBrain0Beat-1000004.apk.csv
+./out/benign/air.androidtest-1004005.apk.csv
+./out/benign/air.anomalist5-1000000.apk.csv
+./out/benign/air.BusinessLawyersappforandroid-1001001.apk.csv
+./out/malware/adware/0015ae7c27688d45f79170dcea16131ce557912a1a0c5f3b6b0465ee0774a452.1cf660303734c47286ca7b57954ba058.apk.csv
+./out/malware/adware/018096f1e732c91fb315a84ab5d851430c5d2c124a7f8dbb1792cf9606335e41.7eb9b4a2a171b616d6c11050ced9f978.apk.csv
+./out/malware/adware/01c888061f79a1a48bd1a2d1b7ed7fae6901890b21d663a599b0010b7fc82f65.b5d6c41ef515d96da5befdaff88ae769.apk.csv
+./out/malware/adware/045b3aa12aed348a4efd5574b88da97c036a766d77963773974dee02ea8d7ceb.d3ee9693fc398614ee1ca9c1bfacc540.apk.csv
+./out/malware/adware/048ceb8c5a36a644a3c33cc9527195ff68bef5a76cf0de9e7da1cc77eb0a461c.a2cdae7614ac653b945e432bc27ad05e.apk.csv
