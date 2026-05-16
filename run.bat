@@ -1,52 +1,43 @@
 @echo off
-REM ============================================================
-REM  SEMetrics - Feature extraction with DroidASAT (Soot)
-REM
-REM  Processes every APK under:
-REM     samples\benign            -> out\benign
-REM     samples\malware\adware    -> out\malware\adware
-REM
-REM  Output: one CSV per APK (created by DroidASAT)
-REM  Log:    run.log (all Soot/Java stdout + stderr)
-REM ============================================================
 
-setlocal
+echo ================================
+echo SEMetrics Feature Extraction
+echo ================================
 
-REM --- 1. Run from this script's own directory (handles spaces) ---
-cd /d "%~dp0"
+REM Use Java 17 because DroidASAT requires a newer Java runtime
+set PATH=C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin;%PATH%
 
-REM --- 2. Make sure the output folders exist --------------------
-if not exist "out\benign"         mkdir "out\benign"
-if not exist "out\malware\adware" mkdir "out\malware\adware"
+echo.
+echo Checking Java version...
+java -version
 
-REM --- 3. Reset the log file ------------------------------------
-echo Run started at %DATE% %TIME% > run.log
+echo.
+echo Creating output directories...
+if not exist out mkdir out
+if not exist out\benign mkdir out\benign
+if not exist out\malware mkdir out\malware
+if not exist out\malware\adware mkdir out\malware\adware
 
-REM --- 4. Common variables --------------------------------------
-set "CP=.;DroidASAT.jar;lib/rt.jar;lib/sootclasses-trunk-jar-with-dependencies.jar;lib/soot-infoflow.jar;lib/soot-infoflow-android.jar"
-set "MAIN=DroidASAT.main"
-set "RT=lib/rt.jar"
-set "APIS=lib/android-jar"
-set "JVM_OPTS=-Xms512m -Xmx1024m"
-
-REM --- 5. Process benign APKs -----------------------------------
-echo Processing benign samples...
+echo.
+echo Extracting features from benign APKs...
 for %%f in (samples\benign\*.apk) do (
-    echo   %%~nxf
-    echo --- %%f --- >> run.log
-    java %JVM_OPTS% -cp "%CP%" %MAIN% %RT% %APIS% "%%f" "out\benign" >> run.log 2>&1
-)
-
-REM --- 6. Process malware APKs ----------------------------------
-echo Processing malware samples...
-for %%f in (samples\malware\adware\*.apk) do (
-    echo   %%~nxf
-    echo --- %%f --- >> run.log
-    java %JVM_OPTS% -cp "%CP%" %MAIN% %RT% %APIS% "%%f" "out\malware\adware" >> run.log 2>&1
+    echo Processing benign APK: %%f
+    java -Xms512m -Xmx1024m -cp .;DroidASAT.jar;lib/rt.jar;lib/android-jar;lib/sootclasses-trunk-jar-with-dependencies.jar;lib/soot-infoflow.jar;lib/soot-infoflow-android.jar DroidASAT.main lib/rt.jar lib/android-jar "%%f" out\benign
 )
 
 echo.
-echo Done. Output CSVs are in out\benign and out\malware\adware.
-echo See run.log for per-APK details.
+echo Extracting features from malware APKs...
+for %%f in (samples\malware\adware\*.apk) do (
+    echo Processing malware APK: %%f
+    java -Xms512m -Xmx1024m -cp .;DroidASAT.jar;lib/rt.jar;lib/android-jar;lib/sootclasses-trunk-jar-with-dependencies.jar;lib/soot-infoflow.jar;lib/soot-infoflow-android.jar DroidASAT.main lib/rt.jar lib/android-jar "%%f" out\malware\adware
+)
 
-endlocal
+echo.
+echo Creating list_of_csv_files.txt...
+dir /s /b out\*.csv > list_of_csv_files.txt
+
+echo.
+echo Feature extraction completed.
+echo CSV list created: list_of_csv_files.txt
+
+pause
