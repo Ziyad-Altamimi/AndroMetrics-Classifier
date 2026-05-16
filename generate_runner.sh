@@ -1,8 +1,8 @@
 #!/bin/bash
 
 SAMPLES_DIR="./samples"
-RAM_MIN="1g"
-RAM_MAX="4g"
+RAM_MIN="4g"
+RAM_MAX="8g"
 
 # Linux classpath
 CP_LINUX=".:DroidASAT.jar:lib/rt.jar:lib/sootclasses-trunk-jar-with-dependencies.jar:lib/soot-infoflow.jar:lib/soot-infoflow-android.jar"
