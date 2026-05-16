@@ -4,6 +4,9 @@
 # Author: Shahid Alam (sha.alam@uoh.edu.sa)
 # Dated: Feb, 03, 2026
 #
+# Classifier wrapper used by SEMetrics.py. Trains five supervised classifiers
+# on the consolidated dataset, prints a readable confusion matrix per
+# classifier, and saves one ROC PNG per classifier into the results/ folder.
 # --------------------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
@@ -26,6 +29,10 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectKBest, mutual_info_classif
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.pipeline import Pipeline
 
 __DEBUG__  = True
 
@@ -43,20 +50,15 @@ class Classifier:
 	# Complete this function. Follow the instruction given below to complete the function.
 	#
 	def classify(self, dataset, dataset_filename, testSize=20):
-		# Separate the data into features (X) and class label (y)
+		# Separate the data into features (X) and class label (y).
+		# X is everything except the Class column; y is 0 (benign) or 1 (malware).
 		y = dataset[self.CLASS_LABEL]
 		X = dataset.drop(columns=[self.CLASS_LABEL])
+		feature_names_all = list(X.columns)
 
-		# Create the 5 classifiers
-		classifiers = [
-			("NaiveBayes",   GaussianNB()),
-			("DecisionTree", DecisionTreeClassifier()),
-			("RandomForest", RandomForestClassifier()),
-			("KNN",          KNeighborsClassifier()),
-			("AdaBoost",     AdaBoostClassifier()),
-		]
-
-		# Split: testSize is a percentage (e.g. 20 -> 0.20). Stratify when possible.
+		# Split: testSize is a percentage (e.g. 20 -> 0.20). Stratification keeps
+		# the same benign/malware ratio in train and test, which makes accuracy
+		# numbers comparable across runs and prevents lopsided test sets.
 		try:
 			train_X, test_X, train_y, test_y = train_test_split(
 				X, y, test_size=testSize/100.0, random_state=42, stratify=y)
@@ -65,7 +67,38 @@ class Classifier:
 			train_X, test_X, train_y, test_y = train_test_split(
 				X, y, test_size=testSize/100.0, random_state=42)
 
-		# Dedicated output folder for results.txt and ROC PNGs
+		# --- Feature selection (mutual information) ---
+		# Keep the top-K features ranked by mutual information with the label.
+		# Fit the selector on the training data only to avoid leakage.
+		k = min(30, train_X.shape[1])
+		selector = SelectKBest(score_func=mutual_info_classif, k=k)
+		train_X_sel = selector.fit_transform(train_X, train_y)
+		test_X_sel = selector.transform(test_X)
+		selected_features = [feature_names_all[i] for i, keep in enumerate(selector.get_support()) if keep]
+
+		# --- Scaling ---
+		# Only distance- and margin-based models (KNN, LinearSVC) need scaling.
+		# Tree-based models are scale-invariant, so we feed them unscaled features.
+		scaler = StandardScaler()
+		train_X_scaled = scaler.fit_transform(train_X_sel)
+		test_X_scaled = scaler.transform(test_X_sel)
+
+		# Six classifiers spanning different model families. Tree-based models
+		# get light caps (max_depth=10) to prevent overfitting on 206 samples.
+		# Each tuple: (name, estimator, needs_scaling).
+		classifiers = [
+			("NaiveBayes",   GaussianNB(),                                                                False),
+			("DecisionTree", DecisionTreeClassifier(max_depth=10, random_state=42),                       False),
+			("RandomForest", RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42),     False),
+			("KNN",          KNeighborsClassifier(),                                                      True),
+			("AdaBoost",     AdaBoostClassifier(n_estimators=200, random_state=42),                       False),
+			# LinearSVC has no predict_proba on its own; CalibratedClassifierCV
+			# wraps it to produce probability scores for the ROC curve.
+			("LinearSVC",    CalibratedClassifierCV(LinearSVC(max_iter=5000, random_state=42), cv=5),     True),
+		]
+
+		# Keep all reports and plots inside results/ so the project root stays
+		# clean and the graded deliverables are easy to find.
 		results_dir = "results"
 		os.makedirs(results_dir, exist_ok=True)
 
@@ -74,13 +107,73 @@ class Classifier:
 		result_filename = os.path.join(results_dir, base_name + ".results.txt")
 		file_result = open(result_filename, "w")
 
-		# Run each classifier through the existing helper, one ROC PNG per classifier
-		for cn, clf in classifiers:
+		# Provenance header in the results file
+		file_result.write("=== SEMetrics classification report ===\n")
+		file_result.write("Dataset: %s\n" % dataset_filename)
+		file_result.write("Samples: %d total | %d train | %d test\n" % (len(X), len(train_X), len(test_X)))
+		file_result.write("Selected features (top %d by mutual information):\n  %s\n\n"
+		                  % (k, ", ".join(selected_features)))
+
+		# Train each classifier, write its report, save its ROC, and (for
+		# tree-based models only) save a Top-10 feature importance chart.
+		for cn, clf, needs_scaling in classifiers:
+			t_X  = train_X_scaled if needs_scaling else train_X_sel
+			te_X = test_X_scaled  if needs_scaling else test_X_sel
 			filename_roc = os.path.join(results_dir, "ROC_" + cn + ".png")
-			self.classify_with_split(cn, train_X, test_X, train_y, test_y, clf, file_result, filename_roc)
+			self.classify_with_split(cn, t_X, te_X, train_y, test_y, clf, file_result, filename_roc)
+
+			# Feature importance is only available on tree-based models.
+			if hasattr(clf, "feature_importances_"):
+				self._save_feature_importance(cn, clf.feature_importances_, selected_features, results_dir, file_result)
+
+		# --- 10-fold cross-validation ---
+		# Wrap each classifier in a Pipeline so feature selection (and scaling
+		# where applicable) is refit inside every fold. Avoids leakage and
+		# gives an honest stability estimate alongside the single 80/20 split.
+		file_result.write("\n=== 10-fold cross-validation (accuracy) ===\n")
+		print("\n=== 10-fold cross-validation (accuracy) ===")
+		for cn, clf, needs_scaling in classifiers:
+			steps = [("select", SelectKBest(score_func=mutual_info_classif, k=k))]
+			if needs_scaling:
+				steps.append(("scale", StandardScaler()))
+			steps.append(("clf", clf))
+			pipe = Pipeline(steps)
+			try:
+				scores = cross_val_score(pipe, X, y, cv=10, scoring="accuracy")
+				line = "%-12s  mean = %.4f   std = %.4f\n" % (cn, scores.mean(), scores.std())
+			except Exception as e:
+				line = "%-12s  CV failed: %s\n" % (cn, str(e))
+			file_result.write(line)
+			print(line.rstrip())
 
 		# Close the file
 		file_result.close()
+
+	def _save_feature_importance(self, cn, importances, feature_names, results_dir, file_result):
+		# Save a horizontal bar chart of the top-10 features for tree-based
+		# classifiers. Helps interpret which software-engineering metrics
+		# drive the benign-vs-malware decision.
+		idx = np.argsort(importances)[::-1][:10]
+		top_names = [feature_names[i] for i in idx]
+		top_vals  = [importances[i]   for i in idx]
+
+		fig, ax = plt.subplots(figsize=(8, 5))
+		ax.barh(range(len(top_names)), top_vals, color="#4C72B0")
+		ax.set_yticks(range(len(top_names)))
+		ax.set_yticklabels(top_names)
+		ax.invert_yaxis()
+		ax.set_xlabel("Importance")
+		ax.set_title("Top 10 Feature Importances - " + cn)
+		ax.grid(True, axis="x", alpha=0.3)
+		fig.tight_layout()
+		out = os.path.join(results_dir, "FeatureImportance_" + cn + ".png")
+		fig.savefig(out)
+		plt.close(fig)
+
+		file_result.write("Top 10 features (%s):\n" % cn)
+		for n, v in zip(top_names, top_vals):
+			file_result.write("  %-30s %.4f\n" % (n, v))
+		file_result.write("(chart saved to %s)\n\n" % out)
 
 	#
 	# It's not an n-fold cross validation but a %age split,
@@ -110,6 +203,8 @@ class Classifier:
 			# A |_TP_|_FN_
 			# B |_FP_|_TN_
 			# --- BONUS: print confusion matrix in a readable form ---
+			# Render the matrix as a small aligned text table so it appears in
+			# the results file directly above the classification report.
 			cm_text = "\n=== " + cn + " ===\n"
 			cm_text += "Confusion Matrix (rows=actual, cols=predicted):\n"
 			cm_text += "            " + "  ".join("%-10s" % t for t in cl) + "\n"
@@ -123,6 +218,8 @@ class Classifier:
 			result += self.classification_results(cm, class_labels)
 
 			# --- BONUS: ROC curve + AUC (only for classifiers with predict_proba) ---
+			# ROC needs probability scores. Classifiers without predict_proba
+			# (e.g. LinearSVC) are skipped gracefully instead of raising.
 			if hasattr(clf, "predict_proba"):
 				try:
 					proba = clf.predict_proba(test_X)
