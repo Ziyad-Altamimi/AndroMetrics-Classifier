@@ -5,6 +5,9 @@
 # Dated: Feb, 03, 2026
 # SEMetrics => Software Engineering Metrics for Sifting Android Malicious Applications
 #
+# This script consolidates per-APK metric CSVs (produced by DroidASAT) into a
+# single dataset and hands it to Classify.py for benign vs malware classification.
+# Pipeline: per-APK CSVs -> one statistical row per APK -> final_dataset.csv -> classification.
 # --------------------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
@@ -59,6 +62,9 @@ if __name__=="__main__":
 		sys.exit(1)
 
 	file_containing_csv_files = os.path.abspath(file_containing_csv_files)
+	# The manifest must be plain ASCII (no UTF-16 BOM). PowerShell's default
+	# Out-File encoding caused 'embedded null character' errors; generating it
+	# with cmd's `dir /s /b out\*.csv > list_of_csv_files.txt` avoids that.
 	print("Reading list of files from %s"%file_containing_csv_files)
 	f = open(file_containing_csv_files, 'r')
 	files = f.readlines()
@@ -76,6 +82,9 @@ if __name__=="__main__":
 			if __WITH_APK__:
 				dict["APK"] = apk_filename                  # Name of the APK file
 			dict["Number-Of-Methods"] = len(data.index)     # Number of rows i.e., methods in the APK
+			# Label is derived from the path itself: any CSV under a malware/
+			# directory is class 1, everything else is class 0. No separate label
+			# file is needed because the dataset layout already encodes the class.
 			dict[CLASS_LABEL] = 0                           # Benign
 			if "malware" in csv_file:
 				dict[CLASS_LABEL] = 1                       # Malware
@@ -95,7 +104,7 @@ if __name__=="__main__":
 				dict["Range-" + col]  = series.max() - series.min()
 				dict["Std-" + col]    = series.std()
 				dict["Var-" + col]    = series.var()
-			# Append this APK's row to the consolidated DataFrame
+			# One APK -> one summary row of 88 statistics + Number-Of-Methods + Class.
 			df = pd.concat([df, pd.DataFrame([dict])], ignore_index=True)
 		except Exception as error:
 			print("ERROR: Processing file: " + csv_file)
@@ -114,6 +123,7 @@ if __name__=="__main__":
 		sys.exit(1)
 	CL = Classifier(CLASS_LABEL, classes)
 	dataset = pd.read_csv(csv_filename)
+	# Need enough samples for an 80/20 split to leave a meaningful test set.
 	if len(dataset) >= 29:   # more than 29 samples
 		if dataset.isna().any(axis=None) == True:
 			dataset.interpolate(method='linear', inplace=True)
