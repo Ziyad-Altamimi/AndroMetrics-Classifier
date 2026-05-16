@@ -27,7 +27,7 @@ set "CP=.;DroidASAT.jar;lib/rt.jar;lib/sootclasses-trunk-jar-with-dependencies.j
 set "MAIN=DroidASAT.main"
 set "RT=lib/rt.jar"
 set "APIS=lib/android-jar"
-set "JVM_OPTS=-Xms512m -Xmx1024m"
+set "JVM_OPTS=-Xms2048m -Xmx4096m"
 
 REM --- 5. Process benign APKs -----------------------------------
 echo Processing benign samples...
