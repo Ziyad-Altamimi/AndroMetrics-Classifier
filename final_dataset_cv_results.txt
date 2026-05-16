@@ -1,0 +1,38 @@
+============================================================
+BONUS: 10-Fold Stratified Cross-Validation Results
+Classifier: Random Forest (100 trees, max_depth=10)
+============================================================
+
+--- Per-Fold Metrics ---
+
+Metric                              Mean ± Std
+-------------------------------------------------------
+Accuracy                            0.9317 ± 0.0586
+Precision (benign)                  0.9387 ± 0.0504
+Recall / TPR (benign)               0.9209 ± 0.0746
+F1 Score (benign)                   0.9293 ± 0.0618
+Precision (malware)                 0.9261 ± 0.0667
+Recall / TPR (malware)              0.9418 ± 0.0476
+F1 Score (malware)                  0.9336 ± 0.0562
+TPR (benign)                        0.9209 ± 0.0746
+FPR (benign)                        0.0582 ± 0.0476
+TPR (malware)                       0.9418 ± 0.0476
+FPR (malware)                       0.0791 ± 0.0746
+
+--- Aggregate Confusion Matrix (sum over 10 folds) ---
+Predicted:  benign  malware
+Actual benign:     95       8
+Actual malware:      6      97
+
+--- Aggregate Per-Class Metrics ---
+
+Class benign:
+  TPR      = 0.9223
+  FPR      = 0.0583
+  Accuracy = 0.9320
+Class malware:
+  TPR      = 0.9417
+  FPR      = 0.0777
+  Accuracy = 0.9320
+
+============================================================

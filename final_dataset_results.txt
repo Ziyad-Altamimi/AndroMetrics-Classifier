@@ -1,0 +1,148 @@
+GaussianNB--- Report ---
+              precision    recall  f1-score   support
+
+      benign       0.94      0.76      0.84        21
+     malware       0.80      0.95      0.87        21
+
+    accuracy                           0.86        42
+   macro avg       0.87      0.86      0.86        42
+weighted avg       0.87      0.86      0.86        42
+
+Reporting results for Class benign
+   TPR = 0.7619047619047619
+   FPR = 0.047619047619047616
+   Accuracy = 0.8571428571428571
+   F1 Score = 0.8421052631578947
+   Precision = 0.9411764705882353
+Reporting results for Class malware
+   TPR = 0.9523809523809523
+   FPR = 0.23809523809523808
+   Accuracy = 0.8571428571428571
+   F1 Score = 0.8695652173913043
+   Precision = 0.8
+Average TPR = 0.8571428571428571
+Average FPR = 0.14285714285714285
+Average Accuracy = 0.8571428571428571
+Average F1 Score = 0.8558352402745995
+Average Precision = 0.8705882352941177
+
+Optimized threshold: 0.0000
+
+DecisionTreeClassifier--- Report ---
+              precision    recall  f1-score   support
+
+      benign       0.95      0.95      0.95        21
+     malware       0.95      0.95      0.95        21
+
+    accuracy                           0.95        42
+   macro avg       0.95      0.95      0.95        42
+weighted avg       0.95      0.95      0.95        42
+
+Reporting results for Class benign
+   TPR = 0.9523809523809523
+   FPR = 0.047619047619047616
+   Accuracy = 0.9523809523809523
+   F1 Score = 0.9523809523809523
+   Precision = 0.9523809523809523
+Reporting results for Class malware
+   TPR = 0.9523809523809523
+   FPR = 0.047619047619047616
+   Accuracy = 0.9523809523809523
+   F1 Score = 0.9523809523809523
+   Precision = 0.9523809523809523
+Average TPR = 0.9523809523809523
+Average FPR = 0.047619047619047616
+Average Accuracy = 0.9523809523809523
+Average F1 Score = 0.9523809523809523
+Average Precision = 0.9523809523809523
+
+RandomForestClassifier--- Report ---
+              precision    recall  f1-score   support
+
+      benign       1.00      0.95      0.98        21
+     malware       0.95      1.00      0.98        21
+
+    accuracy                           0.98        42
+   macro avg       0.98      0.98      0.98        42
+weighted avg       0.98      0.98      0.98        42
+
+Reporting results for Class benign
+   TPR = 0.9523809523809523
+   FPR = 0.0
+   Accuracy = 0.9761904761904762
+   F1 Score = 0.975609756097561
+   Precision = 1.0
+Reporting results for Class malware
+   TPR = 1.0
+   FPR = 0.047619047619047616
+   Accuracy = 0.9761904761904762
+   F1 Score = 0.9767441860465116
+   Precision = 0.9545454545454546
+Average TPR = 0.9761904761904762
+Average FPR = 0.023809523809523808
+Average Accuracy = 0.9761904761904762
+Average F1 Score = 0.9761769710720363
+Average Precision = 0.9772727272727273
+
+Optimized threshold: 0.3959
+
+AdaBoostClassifier--- Report ---
+              precision    recall  f1-score   support
+
+      benign       1.00      0.95      0.98        21
+     malware       0.95      1.00      0.98        21
+
+    accuracy                           0.98        42
+   macro avg       0.98      0.98      0.98        42
+weighted avg       0.98      0.98      0.98        42
+
+Reporting results for Class benign
+   TPR = 0.9523809523809523
+   FPR = 0.0
+   Accuracy = 0.9761904761904762
+   F1 Score = 0.975609756097561
+   Precision = 1.0
+Reporting results for Class malware
+   TPR = 1.0
+   FPR = 0.047619047619047616
+   Accuracy = 0.9761904761904762
+   F1 Score = 0.9767441860465116
+   Precision = 0.9545454545454546
+Average TPR = 0.9761904761904762
+Average FPR = 0.023809523809523808
+Average Accuracy = 0.9761904761904762
+Average F1 Score = 0.9761769710720363
+Average Precision = 0.9772727272727273
+
+Optimized threshold: 0.4709
+
+LinearSVC--- Report ---
+              precision    recall  f1-score   support
+
+      benign       0.88      1.00      0.93        21
+     malware       1.00      0.86      0.92        21
+
+    accuracy                           0.93        42
+   macro avg       0.94      0.93      0.93        42
+weighted avg       0.94      0.93      0.93        42
+
+Reporting results for Class benign
+   TPR = 1.0
+   FPR = 0.14285714285714285
+   Accuracy = 0.9285714285714286
+   F1 Score = 0.9333333333333333
+   Precision = 0.875
+Reporting results for Class malware
+   TPR = 0.8571428571428571
+   FPR = 0.0
+   Accuracy = 0.9285714285714286
+   F1 Score = 0.9230769230769231
+   Precision = 1.0
+Average TPR = 0.9285714285714286
+Average FPR = 0.07142857142857142
+Average Accuracy = 0.9285714285714286
+Average F1 Score = 0.9282051282051282
+Average Precision = 0.9375
+
+Optimized threshold: 0.7095
+
