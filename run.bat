@@ -9,6 +9,9 @@ REM
 REM  Output: one CSV per APK (created by DroidASAT)
 REM  Log:    run.log (all Soot/Java stdout + stderr)
 REM ============================================================
+REM  Requires Eclipse Temurin / OpenJDK 17+ on PATH because
+REM  DroidASAT.jar is compiled for Java 15 (class file version 59).
+REM ============================================================
 
 setlocal
 
@@ -16,6 +19,8 @@ REM --- 1. Run from this script's own directory (handles spaces) ---
 cd /d "%~dp0"
 
 REM --- 2. Make sure the output folders exist --------------------
+REM     DroidASAT does not auto-create its output directory and will
+REM     silently fail to write a CSV if the target folder is missing.
 if not exist "out\benign"         mkdir "out\benign"
 if not exist "out\malware\adware" mkdir "out\malware\adware"
 
@@ -30,6 +35,8 @@ set "APIS=lib/android-jar"
 set "JVM_OPTS=-Xms2048m -Xmx4096m"
 
 REM --- 5. Process benign APKs -----------------------------------
+REM     The wildcard *.apk is expanded by cmd at runtime, so the script
+REM     stays correct if APKs are added or removed from samples\benign\.
 echo Processing benign samples...
 for %%f in (samples\benign\*.apk) do (
     echo   %%~nxf
