@@ -7,10 +7,12 @@
 # --------------------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
-import sys, math, time
+import os, sys, math, time
 import numpy as np
 import pandas as pd
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_curve, auc, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
@@ -41,16 +43,41 @@ class Classifier:
 	# Complete this function. Follow the instruction given below to complete the function.
 	#
 	def classify(self, dataset, dataset_filename, testSize=20):
-		# Separate the data into features (X) and Classes (y)
+		# Separate the data into features (X) and class label (y)
+		y = dataset[self.CLASS_LABEL]
+		X = dataset.drop(columns=[self.CLASS_LABEL])
 
 		# Create the 5 classifiers
+		classifiers = [
+			("NaiveBayes",   GaussianNB()),
+			("DecisionTree", DecisionTreeClassifier()),
+			("RandomForest", RandomForestClassifier()),
+			("KNN",          KNeighborsClassifier()),
+			("AdaBoost",     AdaBoostClassifier()),
+		]
 
-		# Split the data into 20% testing and 80% training
+		# Split: testSize is a percentage (e.g. 20 -> 0.20). Stratify when possible.
+		try:
+			train_X, test_X, train_y, test_y = train_test_split(
+				X, y, test_size=testSize/100.0, random_state=42, stratify=y)
+		except ValueError:
+			# Fallback if a class has too few samples to stratify
+			train_X, test_X, train_y, test_y = train_test_split(
+				X, y, test_size=testSize/100.0, random_state=42)
 
-		# Create the file 'file_result' with specific filename to be passed to the function
+		# Dedicated output folder for results.txt and ROC PNGs
+		results_dir = "results"
+		os.makedirs(results_dir, exist_ok=True)
 
-		# Run the classifiers created above in a loop using the function defined below
-		# classify_with_split(cn, train_X, test_X, train_y, test_y, clf, file_result)
+		# Open the results file inside results/
+		base_name = os.path.basename(dataset_filename)
+		result_filename = os.path.join(results_dir, base_name + ".results.txt")
+		file_result = open(result_filename, "w")
+
+		# Run each classifier through the existing helper, one ROC PNG per classifier
+		for cn, clf in classifiers:
+			filename_roc = os.path.join(results_dir, "ROC_" + cn + ".png")
+			self.classify_with_split(cn, train_X, test_X, train_y, test_y, clf, file_result, filename_roc)
 
 		# Close the file
 		file_result.close()
@@ -82,11 +109,45 @@ class Classifier:
 			#   |_A__|_B__
 			# A |_TP_|_FN_
 			# B |_FP_|_TN_
-			#print(cm)
+			# --- BONUS: print confusion matrix in a readable form ---
+			cm_text = "\n=== " + cn + " ===\n"
+			cm_text += "Confusion Matrix (rows=actual, cols=predicted):\n"
+			cm_text += "            " + "  ".join("%-10s" % t for t in cl) + "\n"
+			for i, row in enumerate(cm):
+				cm_text += "%-12s" % cl[i] + "  ".join("%-10d" % v for v in row) + "\n"
+			print(cm_text)
+			result += cm_text + "\n"
 			report = classification_report(expected, predicted, target_names=cl)
 			print("--- Report ---\n", report)
 			result += "--- Report ---\n" + str(report) + "\n"
 			result += self.classification_results(cm, class_labels)
+
+			# --- BONUS: ROC curve + AUC (only for classifiers with predict_proba) ---
+			if hasattr(clf, "predict_proba"):
+				try:
+					proba = clf.predict_proba(test_X)
+					if proba.shape[1] == 2:
+						pos_proba = proba[:, 1]
+						fpr, tpr, _ = roc_curve(test_y, pos_proba)
+						roc_auc = auc(fpr, tpr)
+						fig, ax = plt.subplots(figsize=(6, 5))
+						ax.plot(fpr, tpr, label="%s (AUC = %.3f)" % (cn, roc_auc))
+						ax.plot([0, 1], [0, 1], "k--", label="Random")
+						ax.set_xlabel("False Positive Rate")
+						ax.set_ylabel("True Positive Rate")
+						ax.set_title("ROC Curve - " + cn)
+						ax.legend(loc="lower right")
+						ax.grid(True, alpha=0.3)
+						fig.tight_layout()
+						fig.savefig(filename_roc)
+						plt.close(fig)
+						result += "ROC AUC = %.4f  (saved to %s)\n\n" % (roc_auc, filename_roc)
+					else:
+						result += "ROC skipped: not a binary classification.\n\n"
+				except Exception as e:
+					result += "ROC skipped due to error: " + str(e) + "\n\n"
+			else:
+				result += "ROC skipped: " + cn + " has no predict_proba.\n\n"
 
 			file_result.write(result)
 			if __DEBUG__:

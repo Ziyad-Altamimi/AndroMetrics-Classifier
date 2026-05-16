@@ -80,13 +80,23 @@ if __name__=="__main__":
 			if "malware" in csv_file:
 				dict[CLASS_LABEL] = 1                       # Malware
 			headers = list(data.columns)
-            #
-            # --- TASK TO COMPLETE ---
-            # Compute the following metrics:
-            # Sum, Variance, Standard Deviation, Mean, Max, Min, Range
-            # These are statisitical measurements about data, you can more info from Google/chatGPT
-            # Store them in dict and then concat the dict to the dataframe df
-            #
+			# --- Statistical features per metric column ---
+			# For each numeric metric column (every header except 'Method'),
+			# compute 8 statistics: Sum, Mean, Median, Min, Max, Range, Std, Var.
+			for col in headers:
+				if col == "Method":
+					continue
+				series = data[col]
+				dict["Sum-" + col]    = series.sum()
+				dict["Mean-" + col]   = series.mean()
+				dict["Median-" + col] = series.median()
+				dict["Min-" + col]    = series.min()
+				dict["Max-" + col]    = series.max()
+				dict["Range-" + col]  = series.max() - series.min()
+				dict["Std-" + col]    = series.std()
+				dict["Var-" + col]    = series.var()
+			# Append this APK's row to the consolidated DataFrame
+			df = pd.concat([df, pd.DataFrame([dict])], ignore_index=True)
 		except Exception as error:
 			print("ERROR: Processing file: " + csv_file)
 			print(error)
@@ -111,10 +121,8 @@ if __name__=="__main__":
 			print("Missing values still present in the dataset")
 			sys.exit(1)
 		dataset.to_csv(csv_filename, index=False)
-        #
-        # --- TASK TO COMPLETE ---
-        # Call the method classify of the class Classifier for classification
-        #
+		# Run classification on the prepared dataset
+		CL.classify(dataset, csv_filename)
 	else:
 		print("ERROR:Nothing to classify in file %s"%csv_filename)
 
