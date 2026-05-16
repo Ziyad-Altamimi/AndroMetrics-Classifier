@@ -12,6 +12,7 @@ import os, sys, argparse
 import pandas as pd
 
 from Classify import *
+from SEMetricsBonus import Bonus
 
 __DEBUG__  = True
 CLASS_LABEL = "Class"
@@ -80,13 +81,19 @@ if __name__=="__main__":
 			if "malware" in csv_file:
 				dict[CLASS_LABEL] = 1                       # Malware
 			headers = list(data.columns)
-            #
-            # --- TASK TO COMPLETE ---
-            # Compute the following metrics:
-            # Sum, Variance, Standard Deviation, Mean, Max, Min, Range
-            # These are statisitical measurements about data, you can more info from Google/chatGPT
-            # Store them in dict and then concat the dict to the dataframe df
-            #
+			for col in headers:
+				if col == "Method":
+					continue
+				col_data = data[col]
+				dict["Sum-" + col] = col_data.sum()
+				dict["Var-" + col] = 0.0 if pd.isna(col_data.var()) else float(col_data.var())
+				dict["Std-" + col] = 0.0 if pd.isna(col_data.std()) else float(col_data.std())
+				dict["Mean-" + col] = col_data.mean()
+				dict["Max-" + col] = col_data.max()
+				dict["Min-" + col] = col_data.min()
+				dict["Range-" + col] = col_data.max() - col_data.min()
+				dict["Median-" + col] = col_data.median()
+			df = pd.concat([df, pd.DataFrame([dict])], ignore_index=True)
 		except Exception as error:
 			print("ERROR: Processing file: " + csv_file)
 			print(error)
@@ -111,10 +118,10 @@ if __name__=="__main__":
 			print("Missing values still present in the dataset")
 			sys.exit(1)
 		dataset.to_csv(csv_filename, index=False)
-        #
-        # --- TASK TO COMPLETE ---
-        # Call the method classify of the class Classifier for classification
-        #
+		CL.classify(dataset, csv_filename)
+		# BONUS: 10-fold cross-validation with Random Forest
+		cv_filename = csv_filename.replace(".csv", "_cv_results.txt")
+		Bonus.cross_validate_rf(dataset, CLASS_LABEL, classes, cv_filename)
 	else:
 		print("ERROR:Nothing to classify in file %s"%csv_filename)
 
