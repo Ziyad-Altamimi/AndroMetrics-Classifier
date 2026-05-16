@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_curve, auc, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, mutual_info_classif
 
 import warnings
 from sklearn import preprocessing
@@ -24,6 +25,8 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
+
+from SEMetricsBonus import Bonus
 
 __DEBUG__  = True
 
@@ -41,18 +44,50 @@ class Classifier:
 	# Complete this function. Follow the instruction given below to complete the function.
 	#
 	def classify(self, dataset, dataset_filename, testSize=20):
-		# Separate the data into features (X) and Classes (y)
+		X = dataset.drop(columns=[self.CLASS_LABEL])
+		y = dataset[self.CLASS_LABEL]
 
-		# Create the 5 classifiers
+		selector = VarianceThreshold(threshold=0.01)
+		X = selector.fit_transform(X)
+		retained = sum(selector.get_support())
+		print("Features retained after variance threshold: %d / %d" % (retained, X.shape[1]))
 
-		# Split the data into 20% testing and 80% training
+		k_best = SelectKBest(mutual_info_classif, k=30)
+		X = k_best.fit_transform(X, y)
+		print("Features retained after SelectKBest: %d" % X.shape[1])
 
-		# Create the file 'file_result' with specific filename to be passed to the function
+		scaler = preprocessing.StandardScaler()
+		X = pd.DataFrame(scaler.fit_transform(X))
 
-		# Run the classifiers created above in a loop using the function defined below
-		# classify_with_split(cn, train_X, test_X, train_y, test_y, clf, file_result)
+		clf_names = [
+			"GaussianNB",
+			"DecisionTreeClassifier",
+			"RandomForestClassifier",
+			"AdaBoostClassifier",
+			"LinearSVC"
+		]
+		classifiers = [
+			GaussianNB(var_smoothing=1e-9),
+			DecisionTreeClassifier(max_depth=5, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42),
+			RandomForestClassifier(n_estimators=100, max_depth=10, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42),
+			AdaBoostClassifier(n_estimators=50, learning_rate=0.5, random_state=42),
+			LinearSVC(C=1.0, max_iter=2000, dual='auto', class_weight='balanced', random_state=42)
+		]
 
-		# Close the file
+		test_size = testSize / 100.0
+		train_X, test_X, train_y, test_y = train_test_split(
+			X, y, test_size=test_size, random_state=42, stratify=y
+		)
+
+		result_filename = dataset_filename.replace(".csv", "_results.txt")
+		file_result = open(result_filename, "w")
+
+		for i, clf in enumerate(classifiers):
+			cn = clf_names[i]
+			roc_filename = dataset_filename.replace(".csv", "_roc_" + cn + ".png")
+			cm_filename = dataset_filename.replace(".csv", "_cm_" + cn + ".png")
+			self.classify_with_split(cn, train_X, test_X, train_y, test_y, clf, file_result, roc_filename, cm_filename)
+
 		file_result.close()
 
 	#
@@ -61,7 +96,7 @@ class Classifier:
 	# clf is the classifier passed
 	# e.g., NaiveBayes, RandomForest etc
 	#
-	def classify_with_split(self, cn, train_X, test_X, train_y, test_y, clf, file_result, filename_roc):
+	def classify_with_split(self, cn, train_X, test_X, train_y, test_y, clf, file_result, filename_roc, filename_cm=""):
 		try:
 			result = cn
 			print(result)
@@ -73,7 +108,21 @@ class Classifier:
 			for names in class_labels:
 				cl.append(str(self.file_types[names]))
 			clf.fit(train_X, train_y)
-			predicted = clf.predict(test_X)
+			optimal_threshold = 0.5
+			try:
+				if hasattr(clf, 'predict_proba'):
+					scores = clf.predict_proba(test_X)[:, 1]
+				else:
+					scores = clf.decision_function(test_X)
+				if len(class_labels) == 2:
+					fpr_curve, tpr_curve, thresholds = roc_curve(test_y, scores)
+					youden_idx = np.argmax(tpr_curve - fpr_curve)
+					optimal_threshold = thresholds[youden_idx]
+					predicted = (scores >= optimal_threshold).astype(int)
+				else:
+					predicted = clf.predict(test_X)
+			except:
+				predicted = clf.predict(test_X)
 			expected = test_y
 			class_labels = set(expected)      # Extract the class labels from the true_y
 			class_labels = list(class_labels) # Confusion matrix requires class labels in a list
@@ -87,6 +136,25 @@ class Classifier:
 			print("--- Report ---\n", report)
 			result += "--- Report ---\n" + str(report) + "\n"
 			result += self.classification_results(cm, class_labels)
+			if optimal_threshold != 0.5:
+				result += "Optimized threshold: %.4f\n\n" % optimal_threshold
+
+			# BONUS: Generate ROC curve visualization
+			try:
+				if hasattr(clf, 'predict_proba'):
+					scores_bonus = clf.predict_proba(test_X)[:, 1]
+				else:
+					scores_bonus = clf.decision_function(test_X)
+				fpr_bonus, tpr_bonus, _ = roc_curve(test_y, scores_bonus)
+				roc_auc_bonus = auc(fpr_bonus, tpr_bonus)
+				if filename_roc:
+					Bonus.plot_roc_curve(fpr_bonus, tpr_bonus, roc_auc_bonus, cn, filename_roc)
+			except:
+				pass
+
+			# BONUS: Generate confusion matrix heatmap
+			if filename_cm:
+				Bonus.plot_confusion_matrix(cm, cl, cn, filename_cm)
 
 			file_result.write(result)
 			if __DEBUG__:
