@@ -47,15 +47,18 @@ class Classifier:
 		X = dataset.drop(columns=[self.CLASS_LABEL])
 		y = dataset[self.CLASS_LABEL]
 
+		# Remove low-variance features that do not help classification
 		selector = VarianceThreshold(threshold=0.01)
 		X = selector.fit_transform(X)
 		retained = sum(selector.get_support())
 		print("Features retained after variance threshold: %d / %d" % (retained, X.shape[1]))
 
+		# Select the top 30 most relevant features
 		k_best = SelectKBest(mutual_info_classif, k=30)
 		X = k_best.fit_transform(X, y)
 		print("Features retained after SelectKBest: %d" % X.shape[1])
 
+		# Scale features to have a similar range
 		scaler = preprocessing.StandardScaler()
 		X = pd.DataFrame(scaler.fit_transform(X))
 
