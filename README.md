@@ -186,4 +186,4 @@ Five confusion matrix heatmaps are generated (one per classifier) with annotated
 
 **Instructor:** Dr. Shahid Alam (sha.alam@uoh.edu.sa) — University of Hail, Saudi Arabia
 
-**Course:** ISEC363 — Software Engineering Metrics
+**Course:** ISEC363 — Secure Software Development
