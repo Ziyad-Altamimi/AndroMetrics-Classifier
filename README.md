@@ -1,189 +1,253 @@
-# SEMetrics — Software Engineering Metrics for Sifting Android Malicious Applications
 
-ISEC363 Course Project — Android malware detection using software engineering metrics and machine learning.
+# AndroMetrics-Classifier
+
+Android Malware Detection using Software Engineering Metrics and Machine Learning
 
 ## Overview
 
-This project classifies Android APKs as **benign** or **malware** using software engineering metrics extracted via static analysis. Method-level features (LOC, cyclomatic complexity, fan-in/fan-out, etc.) are aggregated into per-APK statistical profiles, then fed to five machine learning classifiers.
+This project detects Android malware using software engineering metrics extracted from APK files through static analysis. Method-level features are statistically aggregated into APK-level feature vectors and classified using multiple machine learning algorithms.
+
+The project is developed for the **ISEC363 — Secure Software Development** course.
 
 ## Pipeline
 
-```
-samples/*.apk
+```text
+APK Samples
     |
     v
-DroidASAT (Java/Soot/FlowDroid)
+DroidASAT Static Analysis
     |
     v
-out/benign/*.csv  +  out/malware/adware/*.csv   (per-method features)
+Per-method CSV Feature Files
     |
     v
-SEMetrics.py   <--  list_of_csv_files.txt
+SEMetrics.py
     |
     v
-final_dataset.csv   (89 aggregate features + Class label)
+final_dataset.csv
     |
     v
-Classify.py   -->   final_dataset_results.txt
-```
+Classify.py
+    |
+    v
+Classification Results + Bonus Visualizations
+````
 
-## Project Structure
+## Repository Structure
 
-```
+```text
 .
-|-- SEMetrics.py               # Feature aggregation: per-method -> per-APK statistics
-|-- Classify.py                # ML classification with 5 classifiers
-|-- SEMetricsBonus.py          # Bonus: ROC, CM heatmaps, 10-fold CV
-|-- run.sh / run.bat           # Runs DroidASAT on all APK samples
-|-- requirements.txt           # Python dependencies
-|-- DroidASAT.jar              # Static analysis engine
-|-- AndroidCallbacks.txt       # Android listener interfaces for Soot
-|-- list_of_csv_files.txt      # Paths to all per-APK CSV files
+|-- SEMetrics.py
+|-- Classify.py
+|-- SEMetricsBonus.py
+|-- pipeline.py
+|-- run.sh / run.bat
+|-- requirements.txt
+|-- DroidASAT.jar
 |
-|-- samples/
-|   |-- benign/                # 103 benign APK files
-|   \-- malware/adware/        # 103 malware APK files
+|-- final_dataset.csv
+|-- final_dataset_results.txt
+|-- final_dataset_cv_results.txt
 |
-|-- out/
-|   |-- benign/                # Per-method CSV output (benign)
-|   \-- malware/adware/        # Per-method CSV output (malware)
+|-- final_dataset_roc_*.png
+|-- final_dataset_cm_*.png
 |
-\-- lib/
-    |-- rt.jar                 # Java runtime for Soot
-    |-- sootclasses-trunk-jar-with-dependencies.jar
-    |-- soot-infoflow.jar
-    |-- soot-infoflow-android.jar
-    \-- android-jar/           # Android SDK platform jars (API 3-29)
+\-- README.md
 ```
+
+> Note: APK samples, Android SDK libraries, and generated intermediate CSV outputs are excluded from the repository due to repository size and security considerations.
 
 ## Requirements
 
-- **Java** (JDK 8+) — for DroidASAT static analysis
-- **Python 3.7+** — for feature aggregation and classification
-- **Cygwin** (Windows only) — provides `find` and other Linux utilities
+* Java JDK 8 or later
+* Python 3.7 or later
+* Cygwin on Windows (optional)
+* Python dependencies from `requirements.txt`
 
-Install Python dependencies:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
+## Dataset
+
+| Class   | Description                    | Label |
+| ------- | ------------------------------ | ----- |
+| Benign  | Normal Android applications    | 0     |
+| Malware | Android malware/adware samples | 1     |
+
+The final machine learning dataset is stored in:
+
+```text
+final_dataset.csv
+```
+
 ## Extracted Features
 
-### Per-method features (extracted by DroidASAT)
+| Feature              | Description             |
+| -------------------- | ----------------------- |
+| LOC                  | Lines of Code           |
+| Fan-In               | Number of callers       |
+| Fan-Out              | Number of callees       |
+| CFG-Size             | Control Flow Graph size |
+| Number-Of-Branches   | Branch count            |
+| Number-Of-Invokes    | Method invocation count |
+| Number-Of-Parameters | Parameter count         |
+| Is-Static            | Static method flag      |
+| Is-Public            | Public method flag      |
+| Is-Private           | Private method flag     |
+| Is-Protected         | Protected method flag   |
 
-| Feature | Description |
-|---------|-------------|
-| LOC | Lines of Code |
-| Fan-In | Number of callers |
-| Fan-Out | Number of callees |
-| CFG-Size | Control Flow Graph size |
-| Number-Of-Branches | Branch count |
-| Number-Of-Invokes | Method invocation count |
-| Number-Of-Parameters | Parameter count |
-| Is-Static | Static method flag (0/1) |
-| Is-Public | Public visibility flag (0/1) |
-| Is-Private | Private visibility flag (0/1) |
-| Is-Protected | Protected visibility flag (0/1) |
+## Feature Aggregation
 
-### Per-APK statistical aggregates
+For each APK, the following statistical measures are calculated:
 
-8 measures computed for each of the 11 features, plus method count:
+* Sum
+* Variance
+* Standard Deviation
+* Mean
+* Maximum
+* Minimum
+* Range
+* Median
 
-**Sum, Var, Std, Mean, Max, Min, Range, Median**
+Example columns:
 
-Example column names: `Sum-LOC`, `Var-LOC`, `Std-LOC`, `Mean-LOC`, etc.
-
-The final CSV has `Class` as the last column (0 = benign, 1 = malware).
+```text
+Sum-LOC
+Mean-LOC
+Max-Fan-Out
+Median-CFG-Size
+```
 
 ## Usage
 
-### Step 1: Run pipeline.py
+### 1. Install dependencies
 
 ```bash
-py pipeline.py
+pip install -r requirements.txt
 ```
 
-### Step 2: Extract features from all APKs
+### 2. Run static analysis
+
+Linux:
 
 ```bash
-bash run.sh        # Linux
-# or
-run.bat            # Windows (Cygwin)
+bash run.sh
 ```
 
-DroidASAT processes each APK and writes a per-method CSV to `out/benign/` or `out/malware/adware/`. The script's last line generates `list_of_csv_files.txt`.
+Windows:
 
-### Step 2: View results
+```bat
+run.bat
+```
 
-- Classification results: `final_dataset_results.txt`
-- Cross-validation results: `final_dataset_cv_results.txt`
-- ROC curves: `final_dataset_roc_*.png` (5 files)
-- Confusion matrix heatmaps: `final_dataset_cm_*.png` (5 files)
+### 3. Build aggregated dataset
+
+```bash
+python SEMetrics.py
+```
+
+### 4. Run classification
+
+```bash
+python Classify.py
+```
+
+Generated outputs:
+
+```text
+final_dataset_results.txt
+final_dataset_cv_results.txt
+final_dataset_roc_*.png
+final_dataset_cm_*.png
+```
+
+## Machine Learning Pipeline
+
+```text
+X
+|
+v
+VarianceThreshold
+|
+v
+SelectKBest
+|
+v
+StandardScaler
+|
+v
+Train/Test Split
+|
+v
+Classification
+```
 
 ## Classifiers
 
-Five classifiers trained and evaluated with an 80/20 stratified split and standardized features (StandardScaler):
-
-| Classifier | Hyperparameters |
-|------------|----------------|
+| Classifier           | Parameters           |
+| -------------------- | -------------------- |
 | Gaussian Naive Bayes | `var_smoothing=1e-9` |
-| Decision Tree | `max_depth=5`, `min_samples_split=5`, `min_samples_leaf=2` |
-| Random Forest | `n_estimators=100`, `max_depth=10`, `min_samples_split=5` |
-| AdaBoost | `n_estimators=50`, `learning_rate=0.5` |
-| Linear SVC | `C=1.0`, `max_iter=2000`, `dual='auto'` |
+| Decision Tree        | `max_depth=5`        |
+| Random Forest        | `n_estimators=100`   |
+| AdaBoost             | `n_estimators=50`    |
+| Linear SVC           | `C=1.0`              |
 
-All use `random_state=42` for reproducibility.
+## Experimental Results
 
-### Preprocessing Pipeline
+| Classifier           | Accuracy | F1-Score |
+| -------------------- | -------- | -------- |
+| Gaussian Naive Bayes | 0.95     | 0.95     |
+| Decision Tree        | 0.93     | 0.93     |
+| Random Forest        | 0.98     | 0.98     |
+| AdaBoost             | 0.98     | 0.98     |
+| Linear SVC           | 0.95     | 0.95     |
 
-```
-X → VarianceThreshold(0.01) → SelectKBest(k=30, mutual_info) → StandardScaler → train_test_split
-```
+Random Forest and AdaBoost achieved the best performance with approximately 98% accuracy.
 
-- **VarianceThreshold** removes near-constant features (noise)
-- **SelectKBest** keeps the top 30 most informative features via mutual information
-- **StandardScaler** standardizes features to zero mean and unit variance
+## Bonus Features
 
-### Class Weighting & Threshold Optimization
+### ROC Curves
 
-- `class_weight='balanced'` on DecisionTree, RandomForest, and LinearSVC to penalize minority-class errors
-- ROC-based threshold calibration via **Youden's index** (maximizes `TPR - FPR`)
+Generated ROC curve visualizations for all classifiers.
 
-## Bonus Features (`SEMetricsBonus.py`)
+### 10-Fold Cross Validation
 
-Three bonus analysis features are implemented in a separate module and called automatically during classification:
+Implemented stratified 10-fold cross-validation using Random Forest.
 
-### 1. ROC Curve Visualization (2 bonus marks)
+### Confusion Matrix Heatmaps
 
-Five ROC curves are generated (one per classifier) showing the trade-off between TPR and FPR. The AUC value is displayed on each plot.
+Generated confusion matrix heatmaps for all classifiers.
 
-**Output:** `final_dataset_roc_GaussianNB.png` through `final_dataset_roc_LinearSVC.png`
 
-### 2. 10-Fold Cross-Validation with Random Forest (2 bonus marks)
-
-Stratified 10-fold cross-validation using the same preprocessing pipeline. Reports per-fold mean ± standard deviation for Accuracy, Precision, Recall, F1, TPR, and FPR across both classes, plus an aggregate confusion matrix.
-
-**Output:** `final_dataset_cv_results.txt`
-
-### 3. Confusion Matrix Heatmap (1 bonus mark)
-
-Five confusion matrix heatmaps are generated (one per classifier) with annotated cell values (TP, FP, FN, TN).
-
-**Output:** `final_dataset_cm_GaussianNB.png` through `final_dataset_cm_LinearSVC.png`
 
 ## Output Files
 
-| File | Description |
-|------|-------------|
-| `final_dataset.csv` | Consolidated feature matrix |
-| `final_dataset_results.txt` | Per-classifier metrics (confusion matrix, precision, recall, F1, accuracy, TPR, FPR) |
-| `final_dataset_roc_*.png` | ROC curves (5 files — one per classifier) |
-| `final_dataset_cm_*.png` | Confusion matrix heatmaps (5 files) |
-| `final_dataset_cv_results.txt` | 10-fold cross-validation results |
+| File                           | Description              |
+| ------------------------------ | ------------------------ |
+| `final_dataset.csv`            | Final dataset            |
+| `final_dataset_results.txt`    | Classification results   |
+| `final_dataset_cv_results.txt` | Cross-validation results |
+| `final_dataset_roc_*.png`      | ROC curve plots          |
+| `final_dataset_cm_*.png`       | Confusion matrix plots   |
+
+## Limitations
+
+* APK files are not included in the repository.
+* Android SDK libraries are excluded due to size.
+* Dynamic malware analysis is not implemented.
+
+## Project Summary
+This project demonstrates how software engineering metrics combined with machine learning can classify Android applications as benign or malicious using static analysis techniques.
+
+---
+---
 
 ## Authors
 
+**Course:** ISEC363 — Secure Software Development 
+
 **Instructor:** Dr. Shahid Alam (sha.alam@uoh.edu.sa) — University of Hail, Saudi Arabia
 
-**Course:** ISEC363 — Secure Software Development
